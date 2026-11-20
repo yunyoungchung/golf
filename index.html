@@ -1,0 +1,159 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>골프모임 팀전 관리</title>
+<style>
+:root{--bg:#f3f6f4;--card:#fff;--tx:#1b2a1f;--mu:#6b7a70;--pr:#1f7a4d;--bd:#dde4df;--ac:#e5f2ea;--wn:#c0392b;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121a15;--card:#1b261f;--tx:#e8efe9;--mu:#93a398;--pr:#3fae78;--bd:#2b3a30;--ac:#22352a;--wn:#ff7a68;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#121a15;--card:#1b261f;--tx:#e8efe9;--mu:#93a398;--pr:#3fae78;--bd:#2b3a30;--ac:#22352a;--wn:#ff7a68;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 -apple-system,"Noto Sans KR","Malgun Gothic",sans-serif;padding-bottom:calc(70px + env(safe-area-inset-bottom,0px))}
+h1{font-size:18px;margin:0;padding:14px 16px 4px}.sub{color:var(--mu);font-size:13px;padding:0 16px 8px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;margin:10px 12px;padding:12px}
+.card h2{margin:0 0 8px;font-size:16px;color:var(--pr)}
+.row{display:flex;align-items:center;gap:6px;padding:7px 0;border-top:1px solid var(--bd)}.row:first-of-type{border-top:0}
+.nm{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+input,select{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:8px;width:64px;text-align:center}
+select{width:84px}input.w{width:100%;text-align:left}
+.v{width:56px;text-align:center;font-weight:700}.lb{color:var(--mu);font-size:12px}.em{font-size:17px;font-weight:800;color:var(--pr)}
+.tot{display:flex;justify-content:space-between;gap:6px;background:var(--ac);border-radius:10px;padding:8px 10px;margin-top:8px;font-size:13px;flex-wrap:wrap}
+button{font:inherit;border:0;border-radius:10px;padding:12px;font-weight:700;cursor:pointer}
+.pri{background:var(--pr);color:#fff;flex:2}.sec{background:var(--ac);color:var(--tx);flex:1}.x{background:none;color:var(--wn);padding:6px;width:auto}
+.seg{display:flex;gap:6px}.seg button{flex:1;background:var(--ac);color:var(--tx)}.seg button.on{background:var(--pr);color:#fff}
+.bar{display:flex;gap:8px;margin:12px}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav button{flex:1;background:none;color:var(--mu);border-radius:0;padding:10px 2px;font-size:11px}nav button.on{color:var(--pr)}nav button:disabled{opacity:.35}
+nav b{display:block;font-size:16px}
+.win{text-align:center;padding:20px 12px}.win .t{font-size:30px;font-weight:800;color:var(--pr)}.rk{width:26px;font-weight:800;color:var(--pr)}
+.g,.gt{flex:none;font-weight:700;color:#2d6fd6}.g{padding:5px 7px;background:var(--ac)}.gt{font-size:12px}.g.g여,.gt.g여{color:#d6457a}
+.s1{gap:4px}.s1 select{width:64px;padding:7px 2px;font-size:13px}.s1 input{width:44px;padding:7px 2px}.s1 input.w{width:auto;flex:1;text-align:left;padding:8px}
+.s1 input.ck{width:22px;height:22px;padding:0;flex:none}.s1 .nm{font-size:14px}.s1 .sec{padding:7px 8px!important}.s1 .x{padding:4px}
+#toast{display:none;position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:10px;z-index:9;font-size:14px;max-width:90%;text-align:center}
+#md{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);align-items:center;justify-content:center;z-index:9}
+#md>div{background:var(--card);border-radius:14px;padding:18px;width:80%;max-width:320px;text-align:center}
+</style></head><body>
+<h1>⛳ 골프모임 팀전 관리</h1><div class="sub" id="sub"></div><div id="app"></div>
+<div id="toast"></div><div id="md"><div><p id="mm"></p><div class="bar" style="margin:0"><button class="sec" onclick="yes(0)">취소</button><button class="pri" onclick="yes(1)">확인</button></div></div></div>
+<nav id="nav"></nav>
+<script>
+var KEY="golfmeet_v2",RK="golfroster_v2",TN=["A팀","B팀","C팀","D팀"];
+var NAMES=["오케이버디79/남","향기76/여","명랑여세74/남","얼탱77/남","오늘은어때77/남","코피펑펑73/남","러블리샷76/여","가온74/남","자몽76/여","겸둥이79/여","뚜버기71/남"];
+function pn(s){var a=s.split("/");return{n:a[0].trim(),g:(a[1]||"").trim()}}
+function num(v){var x=parseFloat(String(v).replace("\u2212","-"));return isNaN(x)?0:x}
+function sg(x){return x>0?"+"+x:""+x}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function ld(k){try{var r=localStorage.getItem(k);return r?JSON.parse(r):null}catch(e){return null}}
+function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+var R=ld(RK);
+if(!R){var o=ld("golfroster_v1");R={m:o&&o.p?o.p.map(function(x){return{n:x.n==="자몬76"?"자몽76":x.n,g:x.g,h:x.h,sel:true}}):NAMES.map(function(x){var q=pn(x);return{n:q.n,g:q.g,h:0,sel:true}})}}
+function def(){return{teams:2,players:[],ta:[0,0,0,0],cur:1,done:0,rc:0}}
+var S=ld(KEY)||def();
+function save(){sv(KEY,S);sv(RK,R)}
+function toast(m){var e=document.getElementById("toast");e.textContent=m;e.style.display="block";clearTimeout(window._t);window._t=setTimeout(function(){e.style.display="none"},2500)}
+window.alert=toast;
+function ask(m,fn){window._fn=fn;document.getElementById("mm").textContent=m;document.getElementById("md").style.display="flex"}
+function yes(k){document.getElementById("md").style.display="none";var f=window._fn;window._fn=null;if(k&&f)f()}
+function ch(p){return num(p.h)+num(p.a)}
+function res(p){return num(p.s)-72-ch(p)}
+function tp(t){return S.players.filter(function(p){return p.t===t})}
+function tcalc(t){var l=tp(t),h=0,a=0,sc=0,n=0;
+ l.forEach(function(p){h+=num(p.h);a+=num(p.a);if(p.s!==""){n++;sc+=num(p.s)-72}});
+ var conf=h+a+num(S.ta[t]);return{l:l,h:h,a:a,conf:conf,n:n,tot:sc-conf}}
+function go(n){if(n<=S.done+1){S.cur=n;S.done=Math.min(S.done,n-1);save();render()}}
+function back(){go(S.cur-1)}
+function ok(){var n=S.cur,t;
+ if(n===1){var sl=R.m.filter(function(m){return m.sel});if(sl.length<2)return toast("참가자를 2명 이상 선택해주세요.");
+  var old={};S.players.forEach(function(p){old[p.n]=p});
+  S.players=sl.map(function(m){var o=old[m.n]||{};return{n:m.n,g:m.g,h:m.h,t:o.t===undefined?-1:o.t,a:o.a||0,s:o.s===undefined?"":o.s}});
+  S.players.forEach(function(p){if(p.t>=S.teams)p.t=-1})}
+ if(n===2){if(S.players.some(function(p){return p.t<0||p.t>=S.teams}))return toast("팀이 배정되지 않은 닉네임이 있습니다.");
+  for(t=0;t<S.teams;t++)if(!tp(t).length)return toast(TN[t]+"에 인원이 없습니다.")}
+ if(n===4&&S.players.some(function(p){return p.s===""}))return toast("최종타수가 입력되지 않은 닉네임이 있습니다.");
+ S.done=n;S.cur=n+1;save();render();scrollTo(0,0)}
+function reset(){ask("이번 게임(팀·조정·타수)을 초기화할까요? 저장된 명단은 유지되고 참가 체크는 모두 해제됩니다.",function(){S=def();R.m.forEach(function(m){m.sel=false});save();render();scrollTo(0,0)})}
+/* 명단 */
+function setM(i,f,v){R.m[i][f]=v;save();render()}
+function selM(i,c){R.m[i].sel=c;save();render()}
+function allM(c){R.m.forEach(function(m){m.sel=c});save();render()}
+function tgM(i){var m=R.m[i];m.g=m.g==="남"?"여":"남";save();render()}
+function delM(i){ask(R.m[i].n+" 님을 명단에서 삭제할까요?",function(){R.m.splice(i,1);save();render()})}
+function addM(){var v=document.getElementById("nn").value.trim();if(!v)return toast("닉네임을 입력해주세요.");
+ var q=pn(v);if(R.m.some(function(m){return m.n===q.n}))return toast("이미 등록된 닉네임입니다.");
+ R.m.push({n:q.n,g:q.g||document.getElementById("ng").value,h:num(document.getElementById("nh").value),sel:true});save();render()}
+/* 게임 */
+function setT(i,v){S.players[i].t=+v;save();render()}
+function setF(i,f,v){S.players[i][f]=v;save();render()}
+function setTA(t,v){S.ta[t]=v;save();render()}
+function setTeams(n){S.teams=n;S.players.forEach(function(p){if(p.t>=n)p.t=-1});save();render()}
+function ni(v,fn,sg){return '<input type="text" inputmode="decimal" value="'+v+'" onchange="'+fn+'">'+(sg?'<button class="sec" style="flex:none;padding:8px 10px" onclick="pm(this)">±</button>':'')}
+function pm(b){var e=b.previousElementSibling,v=e.value.trim();if(!v||v==="-"){e.value=v?"":"-";e.focus();return}e.value=v.charAt(0)==="-"?v.slice(1):"-"+v;e.onchange()}
+function sh(a){for(var i=a.length-1;i>0;i--){var j=Math.random()*(i+1)|0,t=a[i];a[i]=a[j];a[j]=t}return a}
+function sc(as,P,T){var hs=[],n=[],gc={},t,k;for(t=0;t<T;t++){hs[t]=0;n[t]=0}
+ P.forEach(function(p,i){t=as[i];n[t]++;hs[t]+=num(p.h);if(!gc[p.g]){gc[p.g]=[];for(k=0;k<T;k++)gc[p.g][k]=0}gc[p.g][t]++});
+ var s=0;for(var g in gc)s+=Math.max.apply(0,gc[g])-Math.min.apply(0,gc[g]);
+ var av=hs.map(function(x,i){return x/n[i]});
+ return s*1000+Math.max.apply(0,av)-Math.min.apply(0,av)}
+function auto(){var T=S.teams,P=S.players,N=P.length,t;if(N<T)return toast("인원이 팀 수보다 적습니다.");
+ var base=Math.floor(N/T),rem=N%T,cap=[];for(t=0;t<T;t++)cap[t]=base+(t<rem?1:0);
+ var idx=sh(P.map(function(_,i){return i}));idx.sort(function(a,b){return num(P[b].h)-num(P[a].h)});
+ var top=idx[0],fixT=-1;
+ if(rem>0){var sm=[];for(t=rem;t<T;t++)sm.push(t);fixT=sm[Math.random()*sm.length|0]}
+ var rest=idx.slice(rem>0?1:0),slots=[];
+ for(t=0;t<T;t++){var c=cap[t]-(t===fixT?1:0);while(c-->0)slots.push(t)}
+ var best=null,bs=1e9;
+ for(var it=0;it<1500;it++){var sl=sh(slots.slice()),as=[];if(fixT>=0)as[top]=fixT;
+  rest.forEach(function(pi,k){as[pi]=sl[k]});var s=sc(as,P,T);if(s<bs){bs=s;best=as}}
+ best.forEach(function(t,i){P[i].t=t});S.rc=(S.rc||0)+1;save();render()}
+function sum(){var o=[];for(var t=0;t<S.teams;t++){var l=tp(t);if(!l.length)continue;var h=0;l.forEach(function(p){h+=num(p.h)});
+ o.push(TN[t]+" "+l.length+"명 (남"+l.filter(function(p){return p.g==="남"}).length+" 여"+l.filter(function(p){return p.g==="여"}).length+") 핸디합 "+sg(h))}return o.join("<br>")}
+/* 화면 */
+function st1(){var n=R.m.filter(function(m){return m.sel}).length;
+ var h='<div class="card"><h2>명단 등록</h2><div class="row s1"><input class="w" id="nn" placeholder="닉네임"><select id="ng"><option>남</option><option>여</option></select><input id="nh" placeholder="핸디" value="0"></div><button class="sec" style="width:100%;margin-top:6px" onclick="addM()">+ 명단에 추가</button><div class="lb" style="margin-top:6px">명단은 브라우저에 저장되어 다음에도 남아 있습니다. 닉네임 끝에 /남, /여를 붙여도 됩니다.</div></div>';
+ h+='<div class="card"><h2>이번 게임 참가자 선택 ('+n+'/'+R.m.length+'명)</h2><div class="seg" style="margin-bottom:6px"><button onclick="allM(true)">전체 선택</button><button onclick="allM(false)">전체 해제</button></div>';
+ R.m.forEach(function(m,i){
+  h+='<div class="row s1"><input type="checkbox" class="ck"'+(m.sel?' checked':'')+' onchange="selM('+i+',this.checked)"><div class="nm">'+esc(m.n)+'</div><button class="g g'+m.g+'" onclick="tgM('+i+')">'+(m.g||'?')+'</button>'+ni(m.h,"setM("+i+",'h',this.value)",1)+'<button class="x" onclick="delM('+i+')">✕</button></div>'});
+ return h+'</div>'}
+function st2(){
+ var h='<div class="card"><h2>팀 수</h2><div class="seg">';
+ [1,2,3,4].forEach(function(n){h+='<button class="'+(S.teams===n?'on':'')+'" onclick="setTeams('+n+')">'+n+'팀</button>'});
+ h+='</div><button class="pri" style="width:100%;margin-top:10px" onclick="auto()">🎲 팀 자동배정'+(S.rc?' (다시 배정 · '+S.rc+'회)':'')+'</button><div class="lb" style="margin-top:8px">'+(sum()||'자동배정을 눌러주세요')+'</div></div>';
+ h+='<div class="card"><h2>팀 · 핸디 ('+S.players.length+'명)</h2>';
+ S.players.forEach(function(p,i){
+  h+='<div class="row s1"><div class="nm">'+esc(p.n)+'</div><span class="gt g'+p.g+'">'+p.g+'</span><select onchange="setT('+i+',this.value)"><option value="-1">팀 선택</option>';
+  for(var t=0;t<S.teams;t++)h+='<option value="'+t+'"'+(p.t===t?' selected':'')+'>'+TN[t]+'</option>';
+  h+='</select>'+ni(p.h,"setF("+i+",'h',this.value)",1)+'</div>'});
+ return h+'</div><div class="sub">여기서 고친 핸디는 이번 게임에만 적용됩니다. 명단의 핸디는 1단계에서 수정하세요.</div>'}
+function st3(){var h='';
+ for(var t=0;t<S.teams;t++){var c=tcalc(t);
+  h+='<div class="card"><h2>'+TN[t]+' ('+c.l.length+'명)</h2><div class="row lb"><div class="nm">닉네임</div><div class="v">핸디</div><div style="width:100px;text-align:center">조정</div><div class="v">확정</div></div>';
+  S.players.forEach(function(p,i){if(p.t!==t)return;
+   h+='<div class="row"><div class="nm">'+esc(p.n)+'</div><div class="v">'+sg(num(p.h))+'</div>'+ni(p.a,"setF("+i+",'a',this.value)",1)+'<div class="v">'+sg(ch(p))+'</div></div>'});
+  h+='<div class="tot"><span>핸디합계 <b>'+sg(c.h)+'</b></span><span>개인조정 <b>'+sg(c.a)+'</b></span><span>팀조정 '+ni(S.ta[t],"setTA("+t+",this.value)",1)+'</span><span class="em">팀 확정핸디 '+sg(c.conf)+'</span></div></div>'}
+ return h+'<div class="sub">확정핸디 = 핸디 + 조정값 (팀 확정 = 개인 확정 합계 + 팀조정) · 줄이려면 조정값에 − 를 입력하세요</div>'}
+function st4(){var h='';
+ for(var t=0;t<S.teams;t++){var c=tcalc(t);
+  h+='<div class="card"><h2>'+TN[t]+'</h2><div class="row lb"><div class="nm">닉네임</div><div class="v">확정핸디</div><div style="width:64px;text-align:center">최종타수</div><div class="v">결과</div></div>';
+  S.players.forEach(function(p,i){if(p.t!==t)return;
+   h+='<div class="row"><div class="nm">'+esc(p.n)+'</div><div class="v">'+sg(ch(p))+'</div>'+ni(p.s,"setF("+i+",'s',this.value)")+'<div class="v">'+(p.s===""?"-":sg(res(p)))+'</div></div>'});
+  h+='<div class="tot"><span>입력 <b>'+c.n+'/'+c.l.length+'</b></span><span>팀 확정핸디 <b>'+sg(c.conf)+'</b></span><span class="em">팀 합산 '+(c.n?sg(c.tot):"-")+'</span></div></div>'}
+ return h+'<div class="sub">결과 = 최종타수 − 72 − 확정핸디 · 팀 합산 = 개인 결과 합계 − 팀조정 · 낮을수록 우승</div>'}
+function st5(){
+ var L=[];for(var t=0;t<S.teams;t++){var c=tcalc(t);L.push({t:t,tot:c.tot,n:c.l.length})}
+ L.sort(function(a,b){return a.tot-b.tot});
+ var best=L[0].tot,ws=L.filter(function(x){return x.tot===best}).map(function(x){return TN[x.t]});
+ var h='<div class="card win"><div class="lb">🏆 최종 우승</div><div class="t">'+ws.join(" · ")+'</div><div class="lb">'+(ws.length>1?"동점 · ":"")+'팀 합산 '+sg(best)+'</div></div><div class="card"><h2>팀 순위</h2>';
+ L.forEach(function(x,i){h+='<div class="row"><div class="rk">'+(i+1)+'</div><div class="nm">'+TN[x.t]+' <span class="lb">('+x.n+'명)</span></div><div class="v">'+sg(x.tot)+'</div></div>'});
+ h+='</div><div class="card"><h2>개인 순위 (핸디 적용)</h2>';
+ S.players.slice().sort(function(a,b){return res(a)-res(b)}).forEach(function(p,i){
+  h+='<div class="row"><div class="rk">'+(i+1)+'</div><div class="nm">'+esc(p.n)+' <span class="lb">'+TN[p.t]+' · '+p.s+'타</span></div><div class="v">'+sg(res(p))+'</div></div>'});
+ return h+'</div>'}
+function render(){
+ var T=["명단 · 참가자 선택","팀 배정","팀별 핸디 조정","타수 · 결과","우승팀"];
+ document.getElementById("sub").textContent="STEP "+S.cur+" · "+T[S.cur-1];
+ var h=[st1,st2,st3,st4,st5][S.cur-1]();
+ h+='<div class="bar">'+(S.cur>1?'<button class="sec" onclick="back()">← 이전</button>':'<button class="sec" onclick="reset()">게임 초기화</button>')+
+  (S.cur<5?'<button class="pri" onclick="ok()">'+S.cur+'단계 확정 →</button>':'<button class="pri" onclick="reset()">게임 초기화</button>')+'</div>';
+ document.getElementById("app").innerHTML=h;
+ var n="";[["①","명단"],["②","팀배정"],["③","핸디조정"],["④","타수입력"],["⑤","우승팀"]].forEach(function(m,i){
+  n+='<button class="'+(S.cur===i+1?'on':'')+'" '+(i+1>S.done+1?'disabled ':'')+'onclick="go('+(i+1)+')"><b>'+m[0]+'</b>'+m[1]+'</button>'});
+ document.getElementById("nav").innerHTML=n}
+render();
+</script></body></html>
