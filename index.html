@@ -30,10 +30,14 @@ nav b{display:block;font-size:16px}
 #md{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);align-items:center;justify-content:center;z-index:9}
 #md>div{background:var(--card);border-radius:14px;padding:18px;width:80%;max-width:320px;text-align:center}
 </style></head><body>
-<h1>⛳ 골프모임 팀전 관리</h1><div class="sub" id="sub"></div><div id="app"></div>
+<h1>⛳ 골프모임 팀전 관리</h1><div class="sub" id="auth"></div><div class="sub" id="sub"></div><div id="app"></div>
 <div id="toast"></div><div id="md"><div><p id="mm"></p><div class="bar" style="margin:0"><button class="sec" onclick="yes(0)">취소</button><button class="pri" onclick="yes(1)">확인</button></div></div></div>
 <nav id="nav"></nav>
 <script>
+/* ▼ Firebase 설정: 아래 값을 본인 것으로 교체하세요. ("여기"가 남아 있으면 이 기기에만 저장하는 로컬 모드로 동작) */
+var CFG={apiKey:"AIzaSyBM1LBXK8oHvNd2HVvbMQOU_Rc_EcqOvzo",authDomain:"g-name-80db3.firebaseapp.com",projectId:"g-name-80db3",storageBucket:"g-name-80db3.firebasestorage.app",messagingSenderId:"295337347112",appId:"1:295337347112:web:70dcfda64a527f53fb0d1d"};
+var ADMIN="yunyoung.chung79@gmail.com";
+var FBON=!!(CFG.apiKey&&CFG.apiKey.indexOf("여기")<0);
 var KEY="golfmeet_v2",RK="golfroster_v2",TN=["A팀","B팀","C팀","D팀"];
 var NAMES=["오케이버디79/남","향기76/여","명랑여세74/남","얼탱77/남","오늘은어때77/남","코피펑펑73/남","러블리샷76/여","가온74/남","자몽76/여","겸둥이79/여","뚜버기71/남"];
 function pn(s){var a=s.split("/");return{n:a[0].trim(),g:(a[1]||"").trim()}}
@@ -42,11 +46,15 @@ function sg(x){return x>0?"+"+x:""+x}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
 function ld(k){try{var r=localStorage.getItem(k);return r?JSON.parse(r):null}catch(e){return null}}
 function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
-var R=ld(RK);
+var ADM=!FBON,G=null,SELM=ld("golfsel")||{};
+var R=FBON?{m:[]}:ld(RK);
 if(!R){var o=ld("golfroster_v1");R={m:o&&o.p?o.p.map(function(x){return{n:x.n==="자몬76"?"자몽76":x.n,g:x.g,h:x.h,sel:true}}):NAMES.map(function(x){var q=pn(x);return{n:q.n,g:q.g,h:0,sel:true}})}}
 function def(){return{teams:2,players:[],ta:[0,0,0,0],cur:1,done:0,rc:0}}
 var S=ld(KEY)||def();
-function save(){sv(KEY,S);sv(RK,R)}
+function save(){sv(KEY,S);if(FBON){var o={};R.m.forEach(function(m){if(m.sel)o[m.n]=1});SELM=o;sv("golfsel",o);if(ADM&&window.FB)FB.push(S)}else sv(RK,R)}
+function er(e){toast("처리에 실패했습니다: "+(e&&e.code||e))}
+function adopt(){if(ADM&&G&&G.players&&G.players.length&&!S.players.length){S=JSON.parse(JSON.stringify(G));save()}}
+function withG(f){var o=S;S=G;try{return f()}finally{S=o}}
 function toast(m){var e=document.getElementById("toast");e.textContent=m;e.style.display="block";clearTimeout(window._t);window._t=setTimeout(function(){e.style.display="none"},2500)}
 window.alert=toast;
 function ask(m,fn){window._fn=fn;document.getElementById("mm").textContent=m;document.getElementById("md").style.display="flex"}
@@ -70,14 +78,14 @@ function ok(){var n=S.cur,t;
  S.done=n;S.cur=n+1;save();render();scrollTo(0,0)}
 function reset(){ask("이번 게임(팀·조정·타수)을 초기화할까요? 저장된 명단은 유지되고 참가 체크는 모두 해제됩니다.",function(){S=def();R.m.forEach(function(m){m.sel=false});save();render();scrollTo(0,0)})}
 /* 명단 */
-function setM(i,f,v){R.m[i][f]=v;save();render()}
+function setM(i,f,v){if(FBON){var m=R.m[i];m.h=num(v);render();FB.setH(m.n,m.h).catch(er);return}R.m[i][f]=v;save();render()}
 function selM(i,c){R.m[i].sel=c;save();render()}
 function allM(c){R.m.forEach(function(m){m.sel=c});save();render()}
-function tgM(i){var m=R.m[i];m.g=m.g==="남"?"여":"남";save();render()}
-function delM(i){ask(R.m[i].n+" 님을 명단에서 삭제할까요?",function(){R.m.splice(i,1);save();render()})}
+function tgM(i){var m=R.m[i],g=m.g==="남"?"여":"남";if(FBON){FB.setG(m.n,g).catch(er);return}m.g=g;save();render()}
+function delM(i){var n=R.m[i].n;ask(n+" 님을 명단에서 삭제할까요?",function(){if(FBON){FB.del(n).catch(er);return}R.m.splice(i,1);save();render()})}
 function addM(){var v=document.getElementById("nn").value.trim();if(!v)return toast("닉네임을 입력해주세요.");
  var q=pn(v);if(R.m.some(function(m){return m.n===q.n}))return toast("이미 등록된 닉네임입니다.");
- R.m.push({n:q.n,g:q.g||document.getElementById("ng").value,h:num(document.getElementById("nh").value),sel:true});save();render()}
+ var g=q.g||document.getElementById("ng").value;if(g!=="남"&&g!=="여")return toast("성별은 남 또는 여로 입력해주세요.");if(q.n.length>20)return toast("닉네임은 20자 이내로 입력해주세요.");var m={n:q.n,g:g,h:num(document.getElementById("nh").value),sel:true};if(FBON){FB.add(m).catch(er);return}R.m.push(m);save();render()}
 /* 게임 */
 function setT(i,v){S.players[i].t=+v;save();render()}
 function setF(i,f,v){S.players[i][f]=v;save();render()}
@@ -106,7 +114,7 @@ function sum(){var o=[];for(var t=0;t<S.teams;t++){var l=tp(t);if(!l.length)cont
  o.push(TN[t]+" "+l.length+"명 (남"+l.filter(function(p){return p.g==="남"}).length+" 여"+l.filter(function(p){return p.g==="여"}).length+") 핸디합 "+sg(h))}return o.join("<br>")}
 /* 화면 */
 function st1(){var n=R.m.filter(function(m){return m.sel}).length;
- var h='<div class="card"><h2>명단 등록</h2><div class="row s1"><input class="w" id="nn" placeholder="닉네임"><select id="ng"><option>남</option><option>여</option></select><input id="nh" placeholder="핸디" value="0"></div><button class="sec" style="width:100%;margin-top:6px" onclick="addM()">+ 명단에 추가</button><div class="lb" style="margin-top:6px">명단은 브라우저에 저장되어 다음에도 남아 있습니다. 닉네임 끝에 /남, /여를 붙여도 됩니다.</div></div>';
+ var h='<div class="card"><h2>명단 등록</h2><div class="row s1"><input class="w" id="nn" placeholder="닉네임"><select id="ng"><option>남</option><option>여</option></select><input id="nh" placeholder="핸디" value="0"></div><button class="sec" style="width:100%;margin-top:6px" onclick="addM()">+ 명단에 추가</button><div class="lb" style="margin-top:6px">'+(FBON?'명단은 서버에 저장되어 모두에게 공유됩니다.':'명단은 브라우저에 저장되어 다음에도 남아 있습니다.')+' 닉네임 끝에 /남, /여를 붙여도 됩니다.</div></div>';
  h+='<div class="card"><h2>이번 게임 참가자 선택 ('+n+'/'+R.m.length+'명)</h2><div class="seg" style="margin-bottom:6px"><button onclick="allM(true)">전체 선택</button><button onclick="allM(false)">전체 해제</button></div>';
  R.m.forEach(function(m,i){
   h+='<div class="row s1"><input type="checkbox" class="ck"'+(m.sel?' checked':'')+' onchange="selM('+i+',this.checked)"><div class="nm">'+esc(m.n)+'</div><button class="g g'+m.g+'" onclick="tgM('+i+')">'+(m.g||'?')+'</button>'+ni(m.h,"setM("+i+",'h',this.value)",1)+'<button class="x" onclick="delM('+i+')">✕</button></div>'});
@@ -145,7 +153,7 @@ function st5(){
  S.players.slice().sort(function(a,b){return res(a)-res(b)}).forEach(function(p,i){
   h+='<div class="row"><div class="rk">'+(i+1)+'</div><div class="nm">'+esc(p.n)+' <span class="lb">'+TN[p.t]+' · '+p.s+'타</span></div><div class="v">'+sg(res(p))+'</div></div>'});
  return h+'</div>'}
-function render(){
+function render(){showAuth();if(FBON&&!ADM)return rv();
  var T=["명단 · 참가자 선택","팀 배정","팀별 핸디 조정","타수 · 결과","우승팀"];
  document.getElementById("sub").textContent="STEP "+S.cur+" · "+T[S.cur-1];
  var h=[st1,st2,st3,st4,st5][S.cur-1]();
@@ -155,5 +163,38 @@ function render(){
  var n="";[["①","명단"],["②","팀배정"],["③","핸디조정"],["④","타수입력"],["⑤","우승팀"]].forEach(function(m,i){
   n+='<button class="'+(S.cur===i+1?'on':'')+'" '+(i+1>S.done+1?'disabled ':'')+'onclick="go('+(i+1)+')"><b>'+m[0]+'</b>'+m[1]+'</button>'});
  document.getElementById("nav").innerHTML=n}
+function showAuth(){var e=document.getElementById("auth");if(!FBON){e.innerHTML="";return}
+ e.innerHTML=ADM?'관리자 로그인됨 · <a href="#" onclick="FB.logout();return false">로그아웃</a>':'<a href="#" onclick="FB.login();return false">관리자 로그인</a>'}
+function vw(){
+ var h='<div class="card"><h2>내 정보 등록</h2><div class="row s1"><input class="w" id="nn" placeholder="닉네임"><select id="ng"><option>남</option><option>여</option></select><input id="nh" placeholder="핸디" value="0"></div><button class="sec" style="width:100%;margin-top:6px" onclick="addM()">+ 등록하기</button><div class="lb" style="margin-top:6px">이미 등록된 닉네임은 아래에서 핸디만 수정하세요.</div></div>';
+ h+='<div class="card"><h2>명단 · 핸디 수정 ('+R.m.length+'명)</h2>';
+ R.m.forEach(function(m,i){h+='<div class="row s1"><div class="nm">'+esc(m.n)+'</div><span class="gt g'+m.g+'">'+m.g+'</span>'+ni(m.h,"setM("+i+",'h',this.value)",1)+'</div>'});
+ h+='</div>';
+ if(G&&G.done>=2)h+='<div id="live"><div class="sub">🏌️ 게임 현황 (실시간)</div>'+withG(st4)+(G.done>=4?withG(st5):'')+'</div>';
+ else h+='<div class="card"><h2>게임 현황</h2><div class="lb">아직 팀 배정이 확정되지 않았습니다.</div></div>';
+ return h}
+function rv(){document.getElementById("sub").textContent="모임원 화면 · 핸디 등록과 수정만 가능합니다";
+ document.getElementById("app").innerHTML=vw();document.getElementById("nav").innerHTML="";
+ document.querySelectorAll("#live input,#live select,#live button").forEach(function(e){e.disabled=true})}
 render();
+</script>
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import{getFirestore,collection,doc,setDoc,updateDoc,deleteDoc,onSnapshot}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import{getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,signOut,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+if(window.FBON){
+ var app=initializeApp(window.CFG),db=getFirestore(app),auth=getAuth(app);
+ window.FB={
+  add:function(m){return setDoc(doc(db,"members",m.n),{n:m.n,g:m.g,h:m.h,updatedAt:Date.now()})},
+  setH:function(n,h){return updateDoc(doc(db,"members",n),{h:h,updatedAt:Date.now()})},
+  setG:function(n,g){return updateDoc(doc(db,"members",n),{g:g})},
+  del:function(n){return deleteDoc(doc(db,"members",n))},
+  push:function(x){clearTimeout(window._p);window._p=setTimeout(function(){setDoc(doc(db,"game","current"),{data:JSON.stringify(x),updatedAt:Date.now()}).catch(window.er)},700)},
+  login:function(){var p=new GoogleAuthProvider();signInWithPopup(auth,p).catch(function(){signInWithRedirect(auth,p)})},
+  logout:function(){signOut(auth)}
+ };
+ onSnapshot(collection(db,"members"),function(s){window.R.m=s.docs.map(function(d){var x=d.data();return{n:x.n,g:x.g,h:x.h,sel:!!window.SELM[x.n]}}).sort(function(a,b){return a.n<b.n?-1:1});window.render()},window.er);
+ onSnapshot(doc(db,"game","current"),function(d){if(d.exists()){try{window.G=JSON.parse(d.data().data)}catch(e){}}else window.G=null;window.adopt();window.render()},window.er);
+ onAuthStateChanged(auth,function(u){window.ADM=!!(u&&u.email===window.ADMIN&&u.emailVerified);window.adopt();window.render()});
+}
 </script></body></html>
